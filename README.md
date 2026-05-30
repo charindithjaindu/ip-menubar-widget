@@ -71,6 +71,35 @@ If signing complains, select the **WhatsMyIP** target → Signing & Capabilities
 open build/Build/Products/Debug/WhatsMyIP.app
 ```
 
+## Releasing a signed build
+
+`release.sh` builds a Release version, signs it with **Developer ID** + hardened
+runtime, packages a `.dmg`, **notarizes** it with Apple, staples the ticket, and
+cuts a GitHub Release with the DMG attached:
+
+```sh
+./release.sh 1.0.0
+```
+
+Prerequisites (one-time, on the signing machine):
+
+- A **Developer ID Application** certificate in your login keychain.
+- A stored `notarytool` keychain profile:
+  ```sh
+  xcrun notarytool store-credentials notarytool \
+    --apple-id "you@example.com" --team-id "YOURTEAMID"
+  ```
+  (the app-specific password comes from appleid.apple.com → App-Specific Passwords)
+- If codesign fails with `errSecInternalComponent`, authorize the key for
+  command-line tools once:
+  ```sh
+  security set-key-partition-list -S apple-tool:,apple:,codesign: \
+    -s -k "<login-password>" ~/Library/Keychains/login.keychain-db
+  ```
+
+> The `IDENTITY` and team ID near the top of `release.sh` are specific to the
+> original author — edit them to your own before running.
+
 ## Refresh behaviour
 
 - **Menu bar IP/country/ISP:** auto every 2 min, **and on every menu open** (opening = "show me fresh data now").
