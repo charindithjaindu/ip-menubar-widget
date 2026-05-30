@@ -12,6 +12,10 @@ settings:
     SWIFT_VERSION: "5.0"
     CODE_SIGN_STYLE: Automatic
     PRODUCT_NAME: "$(TARGET_NAME)"
+    # The __preview.dylib that previews embed isn't notarization-safe; off for release.
+    ENABLE_PREVIEWS: NO
+    # Don't inject the get-task-allow debug entitlement — Apple rejects it when notarizing.
+    CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
 
 targets:
   WhatsMyIP:
