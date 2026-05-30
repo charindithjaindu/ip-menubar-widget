@@ -16,6 +16,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let speedMonitor = NetSpeedMonitor()
     private var speedTimer: Timer?
 
+    // Cumulative data-usage tracking (today / this month / history).
+    private let usageTracker = DataUsageTracker()
+    private var flushTimer: Timer?
+    private var statisticsWindow: StatisticsWindowController?
+
     // Menu items we update in place while the menu is open.
     private var ipv4Item: NSMenuItem!
     private var ipv6Item: NSMenuItem!
@@ -23,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var ispItem: NSMenuItem!
     private var downItem: NSMenuItem!
     private var upItem: NSMenuItem!
+    private var usageTodayItem: NSMenuItem!
+    private var usageMonthItem: NSMenuItem!
     private var statusLineItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -40,9 +47,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         speedTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             guard let self else { return }
             self.speedMonitor.sample()
+            self.usageTracker.record(
+                download: self.speedMonitor.lastIntervalDownloadBytes,
+                upload: self.speedMonitor.lastIntervalUploadBytes
+            )
             self.updateSpeedRows()
+            self.updateUsageRows()
             self.updateStatusTitle()
         }
+
+        // Persist accumulated usage to disk periodically (not every sample).
+        flushTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.usageTracker.flush()
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        usageTracker.flush()
     }
 
     // MARK: - Refresh
@@ -95,6 +116,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(upItem)
         menu.addItem(.separator())
 
+        menu.addItem(sectionTitle("Data Usage"))
+        usageTodayItem = valueItem(label: "Today", value: "—")
+        usageMonthItem = valueItem(label: "This Month", value: "—")
+        menu.addItem(usageTodayItem)
+        menu.addItem(usageMonthItem)
+        let statsItem = NSMenuItem(title: "Statistics…", action: #selector(openStatistics), keyEquivalent: "")
+        statsItem.target = self
+        menu.addItem(statsItem)
+        menu.addItem(.separator())
+
         statusLineItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         statusLineItem.isEnabled = false
         menu.addItem(statusLineItem)
@@ -114,6 +145,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         setValue(countryItem, label: "Country", value: "\(info.countryFlag) \(info.country)")
         setValue(ispItem, label: "ISP", value: info.isp)
         updateSpeedRows()
+        updateUsageRows()
         statusLineItem.title = isRefreshing ? "Refreshing…" : "Updated \(updatedString)"
     }
 
@@ -121,6 +153,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let downItem, let upItem else { return }
         setValue(downItem, label: "↓ Download", value: NetSpeedMonitor.format(speedMonitor.downloadBytesPerSec))
         setValue(upItem, label: "↑ Upload", value: NetSpeedMonitor.format(speedMonitor.uploadBytesPerSec))
+    }
+
+    private func updateUsageRows() {
+        guard let usageTodayItem, let usageMonthItem else { return }
+        let today = "↓ \(DataUsageTracker.formatBytes(usageTracker.todayDownload))  ↑ \(DataUsageTracker.formatBytes(usageTracker.todayUpload))"
+        let month = "↓ \(DataUsageTracker.formatBytes(usageTracker.monthDownload))  ↑ \(DataUsageTracker.formatBytes(usageTracker.monthUpload))"
+        setValue(usageTodayItem, label: "Today", value: today)
+        setValue(usageMonthItem, label: "This Month", value: month)
+    }
+
+    @objc private func openStatistics() {
+        usageTracker.flush()
+        if statisticsWindow == nil {
+            statisticsWindow = StatisticsWindowController(tracker: usageTracker)
+        }
+        statisticsWindow?.present()
     }
 
     /// Menu bar title: flag + the dominant transfer direction only.

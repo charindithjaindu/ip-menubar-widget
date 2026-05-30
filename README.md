@@ -30,11 +30,30 @@ Network Speed
   ↓ Download:  1.2 MB/s
   ↑ Upload:    340 KB/s
 ─────────────
+Data Usage
+  Today:       ↓ 4.2 GB  ↑ 880 MB
+  This Month:  ↓ 96 GB   ↑ 12 GB
+  Statistics…
+─────────────
   Updated 11:52
   Quit
 ```
 
 Click any IP/country/ISP row to copy that value.
+
+### Data usage
+
+The app keeps a running tally of how much data you've transferred and shows
+**today's** and **this month's** download/upload totals right in the menu.
+Click **Statistics…** to open a window with the full day-by-day and
+month-by-month breakdown so you can check past usage.
+
+Totals are persisted across launches in a small SQLite database
+(`~/Library/Application Support/WhatsMyIP/usage.sqlite`, one row per day) and
+pruned to the last ~400 days. Counting starts when the app launches and, like the live
+speed readout, it measures **machine-wide** traffic seen on your network
+interfaces — not per-app, and it can't recover traffic from before the app was
+running.
 
 **Widget** (small/medium): public IPv4, IPv6, country (+ ISP on medium), with a manual ↻ refresh button. *Live speed is menu-bar-only* — a widget is a periodic static snapshot the OS renders and can't sample a live rate.
 
@@ -45,6 +64,8 @@ project.yml                       # xcodegen spec (source of truth for the Xcode
 Sources/Shared/IPService.swift    # IP / country / ISP fetch — shared by both targets
 Sources/App/AppDelegate.swift     # menu bar app (AppKit)
 Sources/App/NetSpeedMonitor.swift # live throughput via interface byte counters
+Sources/App/DataUsageTracker.swift            # per-day usage totals, persisted
+Sources/App/StatisticsWindowController.swift  # usage history window
 Sources/Widget/                   # WidgetKit extension
 ```
 

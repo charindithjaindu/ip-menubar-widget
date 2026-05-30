@@ -8,6 +8,11 @@ final class NetSpeedMonitor {
     private(set) var downloadBytesPerSec: Double = 0
     private(set) var uploadBytesPerSec: Double = 0
 
+    /// Raw bytes transferred during the most recent sample interval. The data
+    /// usage tracker accumulates these into per-day totals.
+    private(set) var lastIntervalDownloadBytes: UInt64 = 0
+    private(set) var lastIntervalUploadBytes: UInt64 = 0
+
     private var lastReceived: UInt64 = 0
     private var lastSent: UInt64 = 0
     private var lastSampleTime: Date?
@@ -30,6 +35,8 @@ final class NetSpeedMonitor {
         // Counters can wrap (they're 32-bit per interface); treat a decrease as 0.
         let down = counters.received >= lastReceived ? counters.received - lastReceived : 0
         let up = counters.sent >= lastSent ? counters.sent - lastSent : 0
+        lastIntervalDownloadBytes = down
+        lastIntervalUploadBytes = up
         downloadBytesPerSec = Double(down) / elapsed
         uploadBytesPerSec = Double(up) / elapsed
     }
