@@ -1,4 +1,8 @@
 build/
+releasebuild/
+*.dmg
+DeveloperID_backup.p12
+release.sh
 DerivedData/
 *.xcuserstate
 xcuserdata/
