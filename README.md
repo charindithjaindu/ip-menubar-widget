@@ -1,6 +1,6 @@
 # What's My IP — macOS menu bar app + widget
 
-Shows your **public IPv4, IPv6, country, ISP**, and **live network speed** — right in the menu bar, plus a Notification Center / desktop widget.
+Shows your **public IPv4, IPv6, country, ISP**, and **live network speed** — right in the menu bar, plus a Notification Center / desktop widget. Includes a built-in **on-demand speed test** (download / upload / ping) so you don't need to open a browser to measure your connection.
 
 ## Why this is different from a normal speed checker
 
@@ -30,6 +30,10 @@ Network Speed
   ↓ Download:  1.2 MB/s
   ↑ Upload:    340 KB/s
 ─────────────
+Speed Test
+  Result:      ↓ 245.3 Mbps  ↑ 18.2 Mbps  •  12 ms ping
+  Run Speed Test
+─────────────
 Data Usage
   Today:       ↓ 4.2 GB  ↑ 880 MB
   This Month:  ↓ 96 GB   ↑ 12 GB
@@ -40,6 +44,17 @@ Data Usage
 ```
 
 Click any IP/country/ISP row to copy that value.
+
+### Speed test
+
+The live readout shows what your Mac is transferring *right now*; **Run Speed
+Test** measures what your connection *can* do. It runs against Cloudflare's
+speed-test endpoints (`speed.cloudflare.com`): best-of-4 round trips for ping,
+then ~8 seconds of sustained download and ~8 seconds of sustained upload, so a
+full run takes around 20 seconds. The menu rows update in place while it runs,
+and the test finishes in the background even if you close the menu. Note that
+the transferred data (potentially a few hundred MB on fast connections) counts
+toward the Data Usage totals — it's real traffic.
 
 ### Data usage
 
@@ -64,6 +79,7 @@ project.yml                       # xcodegen spec (source of truth for the Xcode
 Sources/Shared/IPService.swift    # IP / country / ISP fetch — shared by both targets
 Sources/App/AppDelegate.swift     # menu bar app (AppKit)
 Sources/App/NetSpeedMonitor.swift # live throughput via interface byte counters
+Sources/App/SpeedTest.swift       # on-demand bandwidth test (Cloudflare endpoints)
 Sources/App/DataUsageTracker.swift            # per-day usage totals, persisted
 Sources/App/StatisticsWindowController.swift  # usage history window
 Sources/Widget/                   # WidgetKit extension
@@ -103,6 +119,7 @@ open build/Build/Products/Debug/WhatsMyIP.app
 - **IPv4 + country + ISP:** one request to `ipapi.co` → falls back to `ipwho.is` → `ifconfig.co` (IPv4 and country/ISP come from a single call).
 - **IPv6:** `ipv6.icanhazip.com` → `6.ident.me` → `ipv6.seeip.org` → `api6.ipify.org`.
 - **Speed:** the OS per-interface byte counters (`getifaddrs`, same source as `netstat -ib`).
+- **Speed test:** `speed.cloudflare.com` (`__down` for ping/download, `__up` for upload).
 
 > **Note on accuracy:** IP geolocation reports where the *IP* lives, which for a VPN/proxy is the **exit node**, not your physical location. "IPv6: Not available" means your network has no public IPv6 route — normal on many connections. Speed is **machine-wide**, not per-app.
 

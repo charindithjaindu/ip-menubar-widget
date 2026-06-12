@@ -28,6 +28,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var ispItem: NSMenuItem!
     private var downItem: NSMenuItem!
     private var upItem: NSMenuItem!
+    private var speedTestResultItem: NSMenuItem!
+    private var runSpeedTestItem: NSMenuItem!
+    private var isSpeedTesting = false
     private var usageTodayItem: NSMenuItem!
     private var usageMonthItem: NSMenuItem!
     private var statusLineItem: NSMenuItem!
@@ -116,6 +119,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(upItem)
         menu.addItem(.separator())
 
+        menu.addItem(sectionTitle("Speed Test"))
+        speedTestResultItem = valueItem(label: "Result", value: "Not run yet")
+        menu.addItem(speedTestResultItem)
+        runSpeedTestItem = NSMenuItem(title: "Run Speed Test", action: #selector(runSpeedTest), keyEquivalent: "")
+        runSpeedTestItem.target = self
+        menu.addItem(runSpeedTestItem)
+        menu.addItem(.separator())
+
         menu.addItem(sectionTitle("Data Usage"))
         usageTodayItem = valueItem(label: "Today", value: "—")
         usageMonthItem = valueItem(label: "This Month", value: "—")
@@ -161,6 +172,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let month = "↓ \(DataUsageTracker.formatBytes(usageTracker.monthDownload))  ↑ \(DataUsageTracker.formatBytes(usageTracker.monthUpload))"
         setValue(usageTodayItem, label: "Today", value: today)
         setValue(usageMonthItem, label: "This Month", value: month)
+    }
+
+    /// Runs the on-demand bandwidth test. The phase/result rows update in place,
+    /// so the user can watch progress with the menu open — and the test keeps
+    /// running to completion even if they close it.
+    @objc private func runSpeedTest() {
+        guard !isSpeedTesting else { return }
+        isSpeedTesting = true
+        runSpeedTestItem.action = nil // greys the item out while the test runs
+
+        Task { @MainActor in
+            let result = await SpeedTest.run { [weak self] phase in
+                self?.runSpeedTestItem.title = phase.label
+            }
+            if let result {
+                let value = "↓ \(SpeedTest.formatMbps(result.downloadBitsPerSec))  ↑ \(SpeedTest.formatMbps(result.uploadBitsPerSec))  •  \(Int(result.pingMillis.rounded())) ms ping"
+                self.setValue(self.speedTestResultItem, label: "Result", value: value)
+            } else {
+                self.setValue(self.speedTestResultItem, label: "Result", value: "Failed — try again")
+            }
+            self.runSpeedTestItem.title = "Run Speed Test"
+            self.runSpeedTestItem.action = #selector(self.runSpeedTest)
+            self.isSpeedTesting = false
+        }
     }
 
     @objc private func openStatistics() {
